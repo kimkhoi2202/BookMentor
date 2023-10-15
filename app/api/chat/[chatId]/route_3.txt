@@ -1,0 +1,109 @@
+import dotenv from "dotenv";
+import { NextResponse } from "next/server";
+import { Configuration, OpenAIApi } from "openai";
+import { auth, currentUser } from "@clerk/nextjs";
+
+import { MemoryManager } from "@/lib/memory";
+import { rateLimit } from "@/lib/rate-limit";
+import prismadb from "@/lib/prismadb";
+
+dotenv.config({ path: `.env` });
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(configuration);
+
+export async function POST(
+  request: Request,
+  { params }: { params: { chatId: string } }
+) {
+  try {
+    const { prompt } = await request.json();
+    const user = await currentUser();
+
+    if (!user || !user.firstName || !user.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const identifier = request.url + "-" + user.id;
+    const { success } = await rateLimit(identifier);
+
+    if (!success) {
+      return new NextResponse("Rate limit exceeded", { status: 429 });
+    }
+
+    const companion = await prismadb.companion.update({
+      where: {
+        id: params.chatId,
+      },
+      data: {
+        messages: {
+          create: {
+            content: prompt,
+            role: "user",
+            userId: user.id,
+          },
+        },
+      },
+    });
+
+    if (!companion) {
+      return new NextResponse("Companion not found", { status: 404 });
+    }
+
+    const PREAMBLE = `ONLY generate plain sentences without prefix of who is speaking. DO NOT use ${companion.name}: prefix.\n\n${companion.instructions}`;
+    const SEED_CHAT = `Below are relevant details about ${companion.name}'s past and the conversation you are in.\n${companion.seed}`;
+
+    const messages = [
+      {
+        role: "system" as const,
+        content: PREAMBLE,
+      },
+      {
+        role: "system" as const,
+        content: SEED_CHAT,
+      },
+      {
+        role: "user" as const,
+        content: prompt,
+      },
+    ];
+
+    const response = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages,
+    });
+
+    const aiResponse = response.data.choices[0]?.message?.content;
+
+    if (aiResponse) {
+      await prismadb.companion.update({
+        where: {
+          id: params.chatId,
+        },
+        data: {
+          messages: {
+            create: {
+              content: aiResponse,
+              role: "system",
+              userId: user.id,
+            },
+          },
+        },
+      });
+    }
+
+    var Readable = require("stream").Readable;
+
+    let s = new Readable();
+    s.push(aiResponse);
+    s.push(null);
+
+    return new NextResponse(aiResponse);
+  } catch (error) {
+    console.error('[CONVERSATION_ERROR]', error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+};

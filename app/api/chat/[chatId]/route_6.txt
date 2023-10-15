@@ -1,0 +1,53 @@
+import dotenv from "dotenv";
+import { NextResponse } from "next/server";
+import { currentUser } from "@clerk/nextjs";
+
+import prismadb from "@/lib/prismadb";
+import * as chatpdf from "@/lib/chatpdf";
+
+dotenv.config({ path: `.env` });
+
+export async function POST(
+  request: Request,
+  { params }: { params: { chatId: string } }
+) {
+  try {
+    const { prompt } = await request.json();
+    const user = await currentUser();
+
+    if (!user || !user.firstName || !user.id) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const companion = await prismadb.companion.findUnique({
+      where: {
+        id: params.chatId,
+      },
+    });
+
+    if (!companion || !companion.chatPdfId) {
+      return new NextResponse("Companion or ChatPDF ID not found", { status: 404 });
+    }
+
+    // Prepend "cha_" prefix to the chatPdfId
+    const formattedChatPdfId = "cha_" + companion.chatPdfId;
+
+    const aiResponse = await chatpdf.chatWithPdf(formattedChatPdfId, [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ]);
+
+    const aiMessage = aiResponse.find((message: any) => message.role === "assistant");
+
+    if (aiMessage) {
+      return new NextResponse(aiMessage.content);
+    } else {
+      return new NextResponse("No response from ChatPDF", { status: 500 });
+    }
+  } catch (error) {
+    console.error('[CONVERSATION_ERROR]', error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+};
