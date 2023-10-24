@@ -6,6 +6,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import axios from "axios";
 import prismadb from "@/lib/prismadb";
 
+export const maxDuration = 30;
+
 dotenv.config({ path: `.env` });
 
 const configuration = new Configuration({
