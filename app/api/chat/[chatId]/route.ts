@@ -60,7 +60,6 @@ export async function POST(request: Request, { params }: { params: { chatId: str
     );
 
     const chatPdfContent = chatPDFResponse.data.content;
-    console.log('ChatPDF Response:', chatPdfContent);
 
     const SYSTEM_MESSAGE = `
     ONLY generate plain sentences. You will be provided the user's input and some information of the book to help with your answer. 
@@ -89,7 +88,6 @@ export async function POST(request: Request, { params }: { params: { chatId: str
     });
 
     const gpt3Content = gpt3Response.data.choices[0]?.message?.content;
-    console.log('OpenAI Response:', gpt3Content);
 
     if (gpt3Content) {
       // Save user's message

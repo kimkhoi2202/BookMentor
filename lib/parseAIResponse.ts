@@ -24,7 +24,5 @@ export const parseAIResponse = (response: string): QAPair[] => {
     if (currentQuestion && currentAnswer) {
         qaPairs.push({ question: currentQuestion, answer: currentAnswer.trim() });
     }
-
-    console.log("Parsed QA Pairs:", qaPairs);
     return qaPairs;
 };
