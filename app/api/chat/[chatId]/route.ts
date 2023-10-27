@@ -64,10 +64,10 @@ export async function POST(request: Request, { params }: { params: { chatId: str
     const chatPdfContent = chatPDFResponse.data.content;
 
     const SYSTEM_MESSAGE = `
-    ONLY generate in plain text. You will be provided the user's input and some information of the book to help with your answer.
-    The user only give you the question and doesn't have any knowledge of the information of the book that was given to you.
-    Use this information to craft your response. Aim to reflect the book's content and author's style while following the given output pattern.
-    The desired output should mirror the character as closely as possible and matches the length of example outputs provided.
+    ONLY generate in plain text. You will be provided the user's input and some information of the book to help with your answer. 
+    The user only give you the question and doesn't have any knowledge of the information of the book that was given to you. 
+    Use this information to craft your response. Aim to reflect the book's content and author's style while following the given output pattern. 
+    The desired output should mirror the character as closely as possible and matches the length of example outputs provided. 
     Always adhere to the following structure: ${companion.description} [emotion]: [output]. Try vary the emotions that matches the context; the example is just for reference, vary the emotion and the response. Always mention the author's full name.
     \nRole:\n${companion.instructions}\nOutput Pattern:\n${companion.seed}`;
 
